@@ -1,0 +1,285 @@
+// PromptGate data model.
+//
+// Two ideas shape this schema:
+//  1. Anything a run depends on is either immutable (PromptVersion) or
+//     snapshotted onto the run (RunCase.variables / RunCase.assertions), so an
+//     old run can always be compared honestly against a new one, even after
+//     test cases are edited.
+//  2. RunCase doubles as the job queue. Each row is one unit of work that a
+//     worker claims with SELECT ... FOR UPDATE SKIP LOCKED. Creating a run and
+//     enqueueing its work is therefore a single database transaction.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String    @id @default(uuid()) @db.Uuid
+  email        String    @unique
+  name         String
+  passwordHash String    @map("password_hash")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  sessions     Session[]
+  projects     Project[]
+  runs         Run[]
+
+  @@map("users")
+}
+
+// We store only a SHA-256 hash of the session token. A leaked database dump
+// therefore cannot be used to impersonate logged-in users.
+model Session {
+  id        String   @id @default(uuid()) @db.Uuid
+  tokenHash String   @unique @map("token_hash")
+  csrfToken String   @map("csrf_token")
+  userId    String   @map("user_id") @db.Uuid
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model Project {
+  id          String           @id @default(uuid()) @db.Uuid
+  ownerId     String           @map("owner_id") @db.Uuid
+  name        String
+  description String           @default("")
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  owner       User             @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  providers   ProviderConfig[]
+  prompts     Prompt[]
+  suites      Suite[]
+  runs        Run[]
+  apiKeys     ApiKey[]
+  cache       CachedResponse[]
+
+  @@unique([ownerId, name])
+  @@map("projects")
+}
+
+enum ProviderKind {
+  SIMULATED
+  OPENAI_COMPATIBLE
+}
+
+model ProviderConfig {
+  id                 String       @id @default(uuid()) @db.Uuid
+  projectId          String       @map("project_id") @db.Uuid
+  name               String
+  kind               ProviderKind
+  model              String
+  baseUrl            String?      @map("base_url")
+  // AES-256-GCM ciphertext (iv:tag:data, base64). Never returned by the API.
+  apiKeyCiphertext   String?      @map("api_key_ciphertext")
+  apiKeyLast4        String?      @map("api_key_last4")
+  // Shared across all workers through a Redis token bucket.
+  requestsPerMinute  Int          @default(60) @map("requests_per_minute")
+  inputCostPerMTok   Float        @default(0) @map("input_cost_per_mtok")
+  outputCostPerMTok  Float        @default(0) @map("output_cost_per_mtok")
+  // Simulator knobs (latency, injected failure rates). Ignored for real providers.
+  settings           Json         @default("{}")
+  createdAt          DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  project            Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  runs               Run[]
+
+  @@unique([projectId, name])
+  @@map("provider_configs")
+}
+
+model Prompt {
+  id            String          @id @default(uuid()) @db.Uuid
+  projectId     String          @map("project_id") @db.Uuid
+  name          String
+  description   String          @default("")
+  // Atomic counter used to hand out version numbers without races.
+  latestVersion Int             @default(0) @map("latest_version")
+  createdAt     DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  project       Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  versions      PromptVersion[]
+
+  @@unique([projectId, name])
+  @@map("prompts")
+}
+
+// Immutable once created: there is deliberately no update endpoint.
+model PromptVersion {
+  id           String   @id @default(uuid()) @db.Uuid
+  promptId     String   @map("prompt_id") @db.Uuid
+  version      Int
+  systemPrompt String   @default("") @map("system_prompt")
+  template     String
+  temperature  Float    @default(0)
+  maxTokens    Int      @default(512) @map("max_tokens")
+  note         String   @default("")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  prompt       Prompt   @relation(fields: [promptId], references: [id], onDelete: Cascade)
+  runs         Run[]
+
+  @@unique([promptId, version])
+  @@map("prompt_versions")
+}
+
+model Suite {
+  id          String     @id @default(uuid()) @db.Uuid
+  projectId   String     @map("project_id") @db.Uuid
+  name        String
+  description String     @default("")
+  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
+  project     Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  cases       TestCase[]
+  runs        Run[]
+
+  @@unique([projectId, name])
+  @@map("suites")
+}
+
+model TestCase {
+  id         String    @id @default(uuid()) @db.Uuid
+  suiteId    String    @map("suite_id") @db.Uuid
+  name       String
+  variables  Json      @default("{}")
+  assertions Json      @default("[]")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  suite      Suite     @relation(fields: [suiteId], references: [id], onDelete: Cascade)
+  runCases   RunCase[]
+
+  @@unique([suiteId, name])
+  @@map("test_cases")
+}
+
+enum RunStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  CANCELLED
+}
+
+enum RunTrigger {
+  USER
+  API_KEY
+}
+
+model Run {
+  id               String         @id @default(uuid()) @db.Uuid
+  projectId        String         @map("project_id") @db.Uuid
+  promptVersionId  String         @map("prompt_version_id") @db.Uuid
+  suiteId          String         @map("suite_id") @db.Uuid
+  providerConfigId String         @map("provider_config_id") @db.Uuid
+  baselineRunId    String?        @map("baseline_run_id") @db.Uuid
+  status           RunStatus      @default(QUEUED)
+  trigger          RunTrigger     @default(USER)
+  createdById      String?        @map("created_by_id") @db.Uuid
+  useCache         Boolean        @default(true) @map("use_cache")
+  // Client-supplied Idempotency-Key plus a hash of the request body, so a
+  // retried CI call returns the original run instead of creating a duplicate.
+  idempotencyKey   String?        @map("idempotency_key")
+  requestHash      String?        @map("request_hash")
+  // Aggregates are written once, by the worker that finalizes the run.
+  totalCases       Int            @default(0) @map("total_cases")
+  passedCases      Int            @default(0) @map("passed_cases")
+  failedCases      Int            @default(0) @map("failed_cases")
+  erroredCases     Int            @default(0) @map("errored_cases")
+  cachedCases      Int            @default(0) @map("cached_cases")
+  inputTokens      Int            @default(0) @map("input_tokens")
+  outputTokens     Int            @default(0) @map("output_tokens")
+  costUsd          Float          @default(0) @map("cost_usd")
+  createdAt        DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  startedAt        DateTime?      @map("started_at") @db.Timestamptz(3)
+  finishedAt       DateTime?      @map("finished_at") @db.Timestamptz(3)
+  project          Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  promptVersion    PromptVersion  @relation(fields: [promptVersionId], references: [id], onDelete: Restrict)
+  suite            Suite          @relation(fields: [suiteId], references: [id], onDelete: Restrict)
+  providerConfig   ProviderConfig @relation(fields: [providerConfigId], references: [id], onDelete: Restrict)
+  baselineRun      Run?           @relation("Baseline", fields: [baselineRunId], references: [id], onDelete: SetNull)
+  dependentRuns    Run[]          @relation("Baseline")
+  createdBy        User?          @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  cases            RunCase[]
+
+  @@unique([projectId, idempotencyKey])
+  @@index([projectId, createdAt])
+  @@map("runs")
+}
+
+enum RunCaseStatus {
+  PENDING
+  RUNNING
+  PASSED
+  FAILED
+  ERROR
+  CANCELLED
+}
+
+model RunCase {
+  id               String        @id @default(uuid()) @db.Uuid
+  runId            String        @map("run_id") @db.Uuid
+  // Nullable so deleting a test case later does not destroy run history.
+  testCaseId       String?       @map("test_case_id") @db.Uuid
+  caseName         String        @map("case_name")
+  variables        Json
+  assertions       Json
+  status           RunCaseStatus @default(PENDING)
+  // Queue bookkeeping.
+  attempts         Int           @default(0)
+  maxAttempts      Int           @default(4) @map("max_attempts")
+  availableAt      DateTime      @default(now()) @map("available_at") @db.Timestamptz(3)
+  lockedBy         String?       @map("locked_by")
+  leaseExpiresAt   DateTime?     @map("lease_expires_at") @db.Timestamptz(3)
+  // Results.
+  renderedPrompt   String?       @map("rendered_prompt")
+  output           String?
+  assertionResults Json?         @map("assertion_results")
+  error            String?
+  cacheHit         Boolean       @default(false) @map("cache_hit")
+  latencyMs        Int?          @map("latency_ms")
+  inputTokens      Int           @default(0) @map("input_tokens")
+  outputTokens     Int           @default(0) @map("output_tokens")
+  costUsd          Float         @default(0) @map("cost_usd")
+  startedAt        DateTime?     @map("started_at") @db.Timestamptz(3)
+  finishedAt       DateTime?     @map("finished_at") @db.Timestamptz(3)
+  run              Run           @relation(fields: [runId], references: [id], onDelete: Cascade)
+  testCase         TestCase?     @relation(fields: [testCaseId], references: [id], onDelete: SetNull)
+
+  @@unique([runId, testCaseId])
+  @@index([runId, status])
+  // Supports the worker's "next available job" scan.
+  @@index([status, availableAt])
+  @@map("run_cases")
+}
+
+model ApiKey {
+  id         String    @id @default(uuid()) @db.Uuid
+  projectId  String    @map("project_id") @db.Uuid
+  name       String
+  prefix     String
+  keyHash    String    @unique @map("key_hash")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  lastUsedAt DateTime? @map("last_used_at") @db.Timestamptz(3)
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz(3)
+  project    Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("api_keys")
+}
+
+// Exact-match response cache. The key includes the project id so one tenant's
+// cached outputs can never be served to another tenant.
+model CachedResponse {
+  key          String   @id
+  projectId    String   @map("project_id") @db.Uuid
+  output       String
+  inputTokens  Int      @map("input_tokens")
+  outputTokens Int      @map("output_tokens")
+  hitCount     Int      @default(0) @map("hit_count")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("cached_responses")
+}

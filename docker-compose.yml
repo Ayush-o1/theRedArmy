@@ -1,0 +1,34 @@
+# Local infrastructure for development.
+#   docker compose up -d redis            -> Redis only (use your own Postgres)
+#   docker compose up -d                  -> Redis + Postgres
+# Postgres is exposed on 5433 so it does not clash with a local install on 5432.
+services:
+  redis:
+    image: redis:7.4-alpine
+    ports:
+      - '6379:6379'
+    command: ['redis-server', '--save', '', '--appendonly', 'no']
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: promptgate
+      POSTGRES_PASSWORD: promptgate
+      POSTGRES_DB: promptgate
+    ports:
+      - '5433:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD', 'pg_isready', '-U', 'promptgate']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:
