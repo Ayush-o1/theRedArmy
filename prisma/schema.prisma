@@ -1,4 +1,4 @@
-// PromptGate data model.
+// theRedArmy data model.
 //
 // Two ideas shape this schema:
 //  1. Anything a run depends on is either immutable (PromptVersion) or

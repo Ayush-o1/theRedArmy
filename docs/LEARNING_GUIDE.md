@@ -10,7 +10,7 @@ This guide takes you from "what is this project?" to being able to discuss it fo
 
 This project was built with an AI coding assistant. In interviews, be accurate about that. A good way to say it:
 
-> "I built PromptGate with heavy use of an AI coding assistant. I chose the problem from research, reviewed the design decisions, and I've studied every part of the code, so I can walk you through how and why each piece works."
+> "I built theRedArmy with heavy use of an AI coding assistant. I chose the problem from research, reviewed the design decisions, and I've studied every part of the code, so I can walk you through how and why each piece works."
 
 What you should be able to do, honestly, after studying this guide:
 
@@ -30,11 +30,13 @@ The best way to make the project truly yours is the exercises in Part 10: extend
 
 Companies use AI models like ChatGPT inside their products, for example to reply to support tickets. The instructions they give the model are called a **prompt**. People edit prompts all the time, and an edit that fixes one thing can silently break another.
 
-PromptGate is a testing tool for prompts. You write **test cases** ("for this ticket, the reply must mention the order number"). Every time you change the prompt, PromptGate runs all the test cases against the new version and tells you which ones broke compared to before. A CI pipeline can call it and block a bad change.
+theRedArmy is a testing tool for prompts. You write **test cases** ("for this ticket, the reply must mention the order number"). Every time you change the prompt, theRedArmy runs all the test cases against the new version and tells you which ones broke compared to before. A CI pipeline can call it and block a bad change.
+
+**See it working before reading further.** Run `npm run db:seed`, start the API and the worker, and log in as `aarav.mehta@theredarmy.test` / `theRedArmy-demo`. The project is Monsoon Market, a fictional online store whose support team tests the prompt that drafts replies to tickets. Version 1 of the prompt quotes the customer's order number. Version 2 was shortened to save tokens and accidentally dropped it. Open the second run: 7 of 8 test cases regressed, and **Compare with baseline** shows the before and after side by side. Keep this example in mind; the rest of the guide explains how each step happens.
 
 ### Interview version
 
-> "PromptGate is a self-hosted regression-testing service for LLM prompts. Prompts are versioned immutably. A run executes one prompt version against a suite of test cases, each with input variables and deterministic checks. A run fans out into one job per test case. The jobs are executed by background workers that claim them from Postgres using `SKIP LOCKED`, with leases for crash recovery, exponential backoff for transient provider errors, a shared Redis token bucket for provider rate limits, and an exact-match response cache so unchanged cases cost nothing. Two runs can be compared case by case, and a CI endpoint with idempotency keys exposes a pass/fail gate where only regressions fail the build."
+> "theRedArmy is a self-hosted regression-testing service for LLM prompts. Prompts are versioned immutably. A run executes one prompt version against a suite of test cases, each with input variables and deterministic checks. A run fans out into one job per test case. The jobs are executed by background workers that claim them from Postgres using `SKIP LOCKED`, with leases for crash recovery, exponential backoff for transient provider errors, a shared Redis token bucket for provider rate limits, and an exact-match response cache so unchanged cases cost nothing. Two runs can be compared case by case, and a CI endpoint with idempotency keys exposes a pass/fail gate where only regressions fail the build."
 
 Practice saying the interview version out loud until you can do it without reading.
 
@@ -373,4 +375,5 @@ After each exercise, run `npm test` and `npm run lint`. Being able to say "I add
 - Changing `ENCRYPTION_KEY`: existing provider keys can no longer be decrypted.
 - Behind a reverse proxy, Express sees the proxy's IP unless `trust proxy` is configured, so rate limits would apply to everyone at once.
 - The simulated provider echoes the prompt. A demo with it shows the pipeline, not model quality.
+- The project was renamed from PromptGate to theRedArmy. A local `.env` or Docker volume created before the rename keeps its old database names; the README explains how to update them. The `pgk_` API-key prefix and `pg_session` cookie name were kept on purpose, so existing keys and sessions still work.
 - Limitations are listed honestly in the [README](../README.md#known-limitations). Mention them before the interviewer finds them.

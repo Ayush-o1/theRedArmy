@@ -244,7 +244,7 @@ export async function providersView({ projectId }) {
               ),
             ),
           )
-        : emptyState('No providers yet', 'Add the simulated provider to try PromptGate without an API key.'),
+        : emptyState('No providers yet', 'Add the simulated provider to try theRedArmy without an API key.'),
       h(
         'section',
         { class: 'block', style: { marginTop: '24px' } },

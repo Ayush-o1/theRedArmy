@@ -20,7 +20,7 @@ function topbar(project) {
       'a',
       { class: 'brand', href: '#/' },
       h('span', { class: 'brand-mark', 'aria-hidden': 'true' }),
-      'PromptGate',
+      'theRedArmy',
     ),
     project
       ? h(

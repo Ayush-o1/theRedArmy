@@ -252,13 +252,16 @@ describe('cost control: response cache', () => {
   });
 
   test("one project's cache is never served to another project", async () => {
-    const alice = await signedInClient();
-    const bob = await signedInClient();
-    const a = await createFixture(alice);
-    const b = await createFixture(bob);
-    await runToCompletion(newWorker(), (await startRun(alice, a).expect(202)).body.run.id);
-    const bobRun = await runToCompletion(newWorker(), (await startRun(bob, b).expect(202)).body.run.id);
-    assert.equal(bobRun.cachedCases, 0, 'identical prompt, different tenant: no cache hit');
+    const kabir = await signedInClient({ name: 'Kabir Shah' });
+    const ananya = await signedInClient({ name: 'Ananya Das' });
+    const kabirProject = await createFixture(kabir);
+    const ananyaProject = await createFixture(ananya);
+    await runToCompletion(newWorker(), (await startRun(kabir, kabirProject).expect(202)).body.run.id);
+    const ananyaRun = await runToCompletion(
+      newWorker(),
+      (await startRun(ananya, ananyaProject).expect(202)).body.run.id,
+    );
+    assert.equal(ananyaRun.cachedCases, 0, 'identical prompt, different tenant: no cache hit');
   });
 });
 

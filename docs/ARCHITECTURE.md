@@ -1,6 +1,6 @@
 # Architecture
 
-PromptGate is a **modular monolith**: one codebase and one database, deployed as two kinds of process.
+theRedArmy is a **modular monolith**: one codebase and one database, deployed as two kinds of process.
 
 - **API process** (`src/server.js`): serves the web UI and the JSON API. It never calls an LLM.
 - **Worker process** (`src/worker.js`): executes test cases. Run as many as you need.
