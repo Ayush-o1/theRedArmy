@@ -12,13 +12,13 @@ function intro() {
       'a',
       { class: 'brand', href: '#/login' },
       h('span', { class: 'brand-mark', 'aria-hidden': 'true' }),
-      'PromptGate',
+      'theRedArmy',
     ),
     h('h1', null, 'Know which test cases broke before your prompt change ships.'),
     h(
       'p',
       null,
-      'PromptGate runs every version of a prompt against the same test suite in background workers, then shows you exactly which cases regressed.',
+      'theRedArmy runs every version of a prompt against the same test suite in background workers, then shows you exactly which cases regressed.',
     ),
     h(
       'ol',

@@ -1,8 +1,8 @@
 {
-  "name": "promptgate",
+  "name": "theredarmy",
   "version": "0.1.0",
   "private": true,
-  "description": "Self-hosted regression testing for LLM prompts: run prompt versions against test suites in background workers and see exactly which cases regressed.",
+  "description": "theRedArmy: self-hosted regression testing for LLM prompts. Run prompt versions against test suites in background workers and see exactly which cases regressed.",
   "type": "module",
   "engines": {
     "node": ">=22.9"

@@ -6,7 +6,7 @@ import { redis } from './redis.js';
 import { logger } from './lib/logger.js';
 
 const server = createApp().listen(config.PORT, () => {
-  logger.info({ port: config.PORT }, `PromptGate API listening on http://localhost:${config.PORT}`);
+  logger.info({ port: config.PORT }, `theRedArmy API listening on http://localhost:${config.PORT}`);
 });
 
 // Stop accepting connections, let in-flight requests finish, then close pools.

@@ -1,4 +1,4 @@
-// Thin wrapper around fetch for the PromptGate API.
+// Thin wrapper around fetch for the theRedArmy API.
 // - Sends the CSRF token on every state-changing request.
 // - Turns the API's error envelope into an ApiError the views can display.
 

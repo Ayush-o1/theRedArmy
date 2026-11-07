@@ -9,7 +9,7 @@ x-app: &app
   profiles: ['full']
   environment:
     NODE_ENV: production
-    DATABASE_URL: postgresql://promptgate:promptgate@postgres:5432/promptgate?schema=public
+    DATABASE_URL: postgresql://theredarmy:theredarmy@postgres:5432/theredarmy?schema=public
     REDIS_URL: redis://redis:6379/0
     # Passed through as-is. The app refuses to start if it is empty or the wrong
     # length. (A compose-level "required" check would also break
@@ -35,15 +35,15 @@ services:
   postgres:
     image: postgres:17-alpine
     environment:
-      POSTGRES_USER: promptgate
-      POSTGRES_PASSWORD: promptgate
-      POSTGRES_DB: promptgate
+      POSTGRES_USER: theredarmy
+      POSTGRES_PASSWORD: theredarmy
+      POSTGRES_DB: theredarmy
     ports:
       - '5433:5432'
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD', 'pg_isready', '-U', 'promptgate']
+      test: ['CMD', 'pg_isready', '-U', 'theredarmy']
       interval: 5s
       timeout: 3s
       retries: 10

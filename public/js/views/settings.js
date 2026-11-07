@@ -9,13 +9,13 @@ function ciExample() {
   const origin = location.origin;
   return `# 1. Start a run of the latest prompt version, compared with the previous version.
 curl -s -X POST ${origin}/api/v1/runs \\
-  -H "Authorization: Bearer $PROMPTGATE_KEY" \\
+  -H "Authorization: Bearer $THEREDARMY_KEY" \\
   -H "Content-Type: application/json" \\
   -H "Idempotency-Key: $GITHUB_SHA" \\
   -d '{"prompt":"<prompt name>","suite":"<suite name>","provider":"<provider name>","baseline":"previous"}'
 
 # 2. Poll until run.gate.status is "passed" or "failed".
-curl -s ${origin}/api/v1/runs/<run id> -H "Authorization: Bearer $PROMPTGATE_KEY"`;
+curl -s ${origin}/api/v1/runs/<run id> -H "Authorization: Bearer $THEREDARMY_KEY"`;
 }
 
 export async function settingsView({ projectId }) {
@@ -145,7 +145,7 @@ export async function settingsView({ projectId }) {
         h(
           'section',
           { class: 'block' },
-          h('header', null, h('h2', null, 'Using PromptGate from CI')),
+          h('header', null, h('h2', null, 'Using theRedArmy from CI')),
           h(
             'p',
             { class: 'muted' },
