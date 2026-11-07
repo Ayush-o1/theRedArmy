@@ -17,6 +17,11 @@ export default [
     },
   },
   {
+    // Playwright specs run Node code that sends some functions into the browser.
+    files: ['e2e/**/*.js'],
+    languageOptions: { globals: { ...globals.node, ...globals.browser } },
+  },
+  {
     files: ['public/**/*.js'],
     languageOptions: { ecmaVersion: 2024, sourceType: 'module', globals: globals.browser },
   },
