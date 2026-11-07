@@ -55,7 +55,7 @@ Focus on the AI domain, but not a chatbot, content generator, basic RAG app or t
 ### Semantic caching
 
 - **Reported:** Redis's own documentation says poorly configured semantic caches can have very high false-positive rates, and a tighter similarity threshold cuts hit rate. A banking case study reported a cache serving instructions for the wrong action. [Thoughtworks](https://www.thoughtworks.com/radar/languages-and-frameworks/gptcache) recommends careful assessment of GPTCache because of false positives and false negatives.
-- **Takeaway used in this project:** in a _testing_ tool, a wrong cached answer is worse than no cache, so PromptGate uses **exact-match** caching only.
+- **Takeaway used in this project:** in a _testing_ tool, a wrong cached answer is worse than no cache, so theRedArmy uses **exact-match** caching only.
 
 ### RAG knowledge freshness
 
@@ -75,7 +75,7 @@ Focus on the AI domain, but not a chatbot, content generator, basic RAG app or t
 | 4   | RAG freshness and sync engine                      | Medium: vendor-heavy                   | Mostly do-it-yourself; streaming database vendors | High                                                                              | Medium: needs an embedding pipeline                       | Medium                                                 |
 | 5   | Structured-output validation and repair            | Medium                                 | Instructor, outputguard                           | Medium: mostly a library                                                          | High                                                      | Low to medium                                          |
 
-## 4. Selection: prompt regression testing (PromptGate)
+## 4. Selection: prompt regression testing (theRedArmy)
 
 **What exactly is the problem?** When a team changes a prompt (or the model behind it), they need to know which known-good behaviours broke. Outputs vary, manual checking does not scale, and re-running a whole suite on every change costs money.
 
@@ -88,7 +88,7 @@ Focus on the AI domain, but not a chatbot, content generator, basic RAG app or t
 **Why might those be insufficient for some teams?** This is stated as an _opportunity_, not a verified market gap:
 
 - The studies above name **cost** and **telling regressions apart from noise** as the pain points.
-- PromptGate tackles both with an exact-match cache (unchanged cases cost nothing) and a per-case comparison where only _regressions_ fail the gate, so known failures do not block a merge.
+- theRedArmy tackles both with an exact-match cache (unchanged cases cost nothing) and a per-case comparison where only _regressions_ fail the gate, so known failures do not block a merge.
 - It is self-hostable with just Postgres and Redis.
 - We make **no claim** that existing tools fail at these things. Several handle them well.
 

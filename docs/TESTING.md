@@ -18,14 +18,14 @@ Prerequisites: Postgres and Redis running (`docker compose up -d redis postgres`
 
 ```bash
 NODE_ENV=test
-DATABASE_URL=postgresql://<user>@localhost:5432/promptgate_test?schema=public
+DATABASE_URL=postgresql://<user>@localhost:5432/theredarmy_test?schema=public
 REDIS_URL=redis://localhost:6379/1
 ENCRYPTION_KEY=<openssl rand -base64 32>
 ALLOW_PRIVATE_PROVIDER_URLS=true
 LOG_LEVEL=silent
 ```
 
-`ALLOW_PRIVATE_PROVIDER_URLS=true` is needed because the provider tests start a mock server on `127.0.0.1`. The SSRF guard itself is unit-tested with private URLs blocked. Create the test database once (`createdb promptgate_test`).
+`ALLOW_PRIVATE_PROVIDER_URLS=true` is needed because the provider tests start a mock server on `127.0.0.1`. The SSRF guard itself is unit-tested with private URLs blocked. Create the test database once (`createdb theredarmy_test`).
 
 ```bash
 npm test            # applies migrations to the test DB, then unit + integration tests
@@ -34,6 +34,8 @@ npm run test:e2e    # browser tests; starts API + worker on port 3100 against th
 npm run lint
 npm run format:check
 ```
+
+Test accounts use fictional Indian names (for example Aditi Rao and Rohan Iyer as two separate tenants in the isolation tests) and email addresses on the reserved `.test` domain, so no test can ever email a real address.
 
 Integration tests truncate all tables (and flush Redis db 1) before each test. **Never point `.env.test` at a database you care about.** Tests run one file at a time (`--test-concurrency=1`) because they share the database.
 

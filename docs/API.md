@@ -124,9 +124,13 @@ A case:
 ```json
 {
   "name": "refund-request",
-  "variables": { "ticket": "I was charged twice", "order_id": "A-1001" },
+  "variables": {
+    "customer_name": "Ishita Sharma",
+    "order_id": "MM-240117",
+    "ticket": "I was charged twice by UPI"
+  },
   "assertions": [
-    { "type": "contains", "value": "A-1001" },
+    { "type": "contains", "value": "MM-240117" },
     { "type": "not_contains", "value": "password" },
     { "type": "regex", "pattern": "^Hi", "flags": "i" },
     { "type": "max_length", "value": 600 },
@@ -204,20 +208,35 @@ Headers: `Authorization: Bearer pgk_…`, optional `Idempotency-Key` (1–200 ch
 ```json
 {
   "run": {
-    "id": "…",
+    "id": "389d01cc-c064-411a-b21e-b68b2a006532",
     "status": "COMPLETED",
     "prompt": "ticket-reply",
     "version": 2,
     "suite": "core-tickets",
     "provider": "simulator",
-    "baselineRunId": "…",
-    "totals": { "cases": 6, "passed": 0, "failed": 6, "errored": 0, "cached": 0, "costUsd": 0.00009 },
-    "progress": { "FAILED": 6 },
-    "comparison": { "regressed": 6, "fixed": 0, "still_failing": 0, "…": 0 },
-    "gate": { "status": "failed", "reasons": ["6 case(s) regressed against the baseline"] },
-    "notPassing": [{ "name": "address-change", "status": "FAILED", "error": null }]
+    "baselineRunId": "c1aacdfe-ad26-4ea7-981e-a29a76a88526",
+    "totals": { "cases": 8, "passed": 1, "failed": 7, "errored": 0, "cached": 0, "costUsd": 0.0003156 },
+    "progress": { "PASSED": 1, "FAILED": 7 },
+    "comparison": {
+      "regressed": 7,
+      "fixed": 0,
+      "still_failing": 0,
+      "added": 0,
+      "removed": 0,
+      "pending": 0,
+      "other": 0,
+      "still_passing": 1,
+      "outputChanged": 8
+    },
+    "gate": { "status": "failed", "reasons": ["7 case(s) regressed against the baseline"] },
+    "notPassing": [
+      { "name": "cancel-before-dispatch", "status": "FAILED", "error": null },
+      { "name": "change-address", "status": "FAILED", "error": null }
+    ]
   }
 }
 ```
+
+This is a real response for the seeded demo's v2 run (`notPassing` shortened to two of its seven entries).
 
 Poll until `gate.status` is `passed` or `failed`, then exit non-zero on `failed`.
