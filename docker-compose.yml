@@ -11,7 +11,10 @@ x-app: &app
     NODE_ENV: production
     DATABASE_URL: postgresql://promptgate:promptgate@postgres:5432/promptgate?schema=public
     REDIS_URL: redis://redis:6379/0
-    ENCRYPTION_KEY: ${ENCRYPTION_KEY:?Set ENCRYPTION_KEY (openssl rand -base64 32)}
+    # Passed through as-is. The app refuses to start if it is empty or the wrong
+    # length. (A compose-level "required" check would also break
+    # `docker compose up postgres`, which does not need the key.)
+    ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
     LOG_LEVEL: info
   depends_on:
     postgres: { condition: service_healthy }

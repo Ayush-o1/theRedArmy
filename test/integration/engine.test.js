@@ -168,6 +168,27 @@ describe('concurrency and crash recovery', () => {
     assert.equal((await casesOf(run.id))[0].status, 'PASSED');
   });
 
+  test('a job whose worker keeps dying gives up at maxAttempts and the run still finishes', async () => {
+    const client = await signedInClient();
+    const f = await createFixture(client, { cases: [{ name: 'poison', variables: { ticket: 'x' } }] });
+    const { run } = (await startRun(client, f).expect(202)).body;
+
+    // Simulate the last allowed attempt being claimed by a worker that then died.
+    const [job] = await claimJobs('dying-worker', 1, 30);
+    await prisma.runCase.update({
+      where: { id: job.id },
+      data: { attempts: 4, leaseExpiresAt: new Date(Date.now() - 1000) },
+    });
+
+    await newWorker().reap();
+    const [c] = await casesOf(run.id);
+    assert.equal(c.status, 'ERROR');
+    assert.match(c.error, /lease expired on the final attempt/);
+    const final = await prisma.run.findUnique({ where: { id: run.id } });
+    assert.equal(final.status, 'COMPLETED', 'the reaper finalizes the run');
+    assert.equal(final.erroredCases, 1);
+  });
+
   test('finalization is idempotent under concurrent calls', async () => {
     const client = await signedInClient();
     const f = await createFixture(client);
