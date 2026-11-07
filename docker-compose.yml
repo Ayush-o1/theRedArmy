@@ -1,7 +1,22 @@
 # Local infrastructure for development.
-#   docker compose up -d redis            -> Redis only (use your own Postgres)
-#   docker compose up -d                  -> Redis + Postgres
+#   docker compose up -d redis              -> Redis only (use your own Postgres)
+#   docker compose up -d redis postgres     -> Redis + Postgres for `npm run dev`
+#   docker compose --profile full up --build -> everything in containers
+#       (needs ENCRYPTION_KEY in your shell or a .env file next to this one)
 # Postgres is exposed on 5433 so it does not clash with a local install on 5432.
+x-app: &app
+  build: .
+  profiles: ['full']
+  environment:
+    NODE_ENV: production
+    DATABASE_URL: postgresql://promptgate:promptgate@postgres:5432/promptgate?schema=public
+    REDIS_URL: redis://redis:6379/0
+    ENCRYPTION_KEY: ${ENCRYPTION_KEY:?Set ENCRYPTION_KEY (openssl rand -base64 32)}
+    LOG_LEVEL: info
+  depends_on:
+    postgres: { condition: service_healthy }
+    redis: { condition: service_healthy }
+
 services:
   redis:
     image: redis:7.4-alpine
@@ -29,6 +44,25 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
+  # Applies database migrations once, then exits. api and worker wait for it.
+  migrate:
+    <<: *app
+    command: ['npx', 'prisma', 'migrate', 'deploy']
+    restart: 'no'
+
+  api:
+    <<: *app
+    ports:
+      - '3000:3000'
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
+  worker:
+    <<: *app
+    command: ['node', 'src/worker.js']
+    depends_on:
+      migrate: { condition: service_completed_successfully }
 
 volumes:
   pgdata:
