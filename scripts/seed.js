@@ -1,6 +1,12 @@
-// Creates a demo account with a project that shows a real regression:
-//   v1 of the prompt includes the order number; v2 "simplifies" the prompt
-//   and drops it, so every case that checks for the order number regresses.
+// Creates a local demo account whose project shows a real regression.
+//
+// Monsoon Market is a fictional online store. Its support team tests the
+// prompt that drafts first replies to customer tickets:
+//   v1 quotes the customer's order number.
+//   v2 "simplifies" the prompt to save tokens and drops the order number,
+//      so every case that checks for the order number regresses.
+// One case (a delivery-area question with no order) checks only things v2
+// keeps, so the comparison also shows a case that still passes.
 //
 // It queues two runs (v1, then v2 with v1 as its baseline). Start the worker
 // (`npm run worker`) and they will execute.
@@ -9,22 +15,103 @@
 // the pipeline (queueing, retries, caching, comparison), not model quality.
 //
 // Usage: npm run db:seed    (safe to re-run: it replaces the demo account)
+//
+// The credentials below are for local development only. Never run this
+// seed against a deployment that other people can reach.
 import { prisma } from '../src/db.js';
 import { redis } from '../src/redis.js';
 import { hashPassword } from '../src/lib/crypto.js';
 import { createRun } from '../src/modules/runs/runs.service.js';
 
-const DEMO_EMAIL = 'demo@promptgate.local';
-const DEMO_PASSWORD = 'promptgate-demo';
+// .test is a reserved top-level domain (RFC 2606), so this address can never
+// deliver mail to a real person.
+const DEMO_EMAIL = 'aarav.mehta@theredarmy.test';
+const DEMO_PASSWORD = 'theRedArmy-demo';
+const DEMO_NAME = 'Aarav Mehta';
 
+// Order numbers are passed as a separate variable and never appear in the
+// ticket text. That is what makes the v2 regression visible: once the
+// template stops including {{order_id}}, the order number is gone.
 const tickets = [
-  ['refund-double-charge', 'I was charged twice for my order', 'A-1001'],
-  ['late-delivery', 'My parcel is a week late', 'A-1002'],
-  ['wrong-size', 'The shoes I received are the wrong size', 'A-1003'],
-  ['cancel-order', 'Please cancel my order before it ships', 'A-1004'],
-  ['damaged-item', 'The lamp arrived broken', 'A-1005'],
-  ['address-change', 'Can I change the delivery address?', 'A-1006'],
+  {
+    name: 'duplicate-upi-payment',
+    customer: 'Ishita Sharma',
+    city: 'Delhi',
+    orderId: 'MM-240117',
+    ticket:
+      'I paid ₹2,499 by UPI and the amount was debited twice from my account. Please refund the extra payment.',
+  },
+  {
+    name: 'delayed-delivery',
+    customer: 'Aditi Rao',
+    city: 'Bengaluru',
+    orderId: 'MM-240231',
+    ticket: 'My order was due last Friday and the tracking page has not updated for four days.',
+  },
+  {
+    name: 'wrong-size',
+    customer: 'Rohan Iyer',
+    city: 'Chennai',
+    orderId: 'MM-240318',
+    ticket: 'I ordered running shoes in size 9 but received size 7. Can I exchange them?',
+  },
+  {
+    name: 'cancel-before-dispatch',
+    customer: 'Priya Nair',
+    city: 'Kochi',
+    orderId: 'MM-240402',
+    ticket:
+      'Please cancel my order for two steel water bottles. I placed it by mistake and it has not shipped yet.',
+  },
+  {
+    name: 'damaged-product',
+    customer: 'Kabir Shah',
+    city: 'Ahmedabad',
+    orderId: 'MM-240455',
+    ticket: 'The glass serving bowl arrived cracked. I have photos of the box and the bowl.',
+  },
+  {
+    name: 'change-address',
+    customer: 'Ananya Das',
+    city: 'Kolkata',
+    orderId: 'MM-240509',
+    ticket: 'I have moved to a new flat in Salt Lake. Can you change the delivery address before it ships?',
+  },
+  {
+    name: 'cod-refund',
+    customer: 'Neha Kulkarni',
+    city: 'Mumbai',
+    orderId: 'MM-240611',
+    ticket: 'I returned a kurta that I paid for with cash on delivery. How will I receive the ₹1,150 refund?',
+  },
+  {
+    // No order yet: the checks only cover things v2 keeps, so this case
+    // passes in both versions.
+    name: 'pincode-serviceability',
+    customer: 'Vikram Singh',
+    city: 'Jaipur',
+    orderId: 'not provided',
+    ticket: 'Do you deliver to PIN code 302017? I would like to order a pressure cooker this week.',
+    mustMention: '302017',
+  },
 ];
+
+const SYSTEM_PROMPT =
+  'You are a support agent for Monsoon Market, an online store for home and kitchen goods. ' +
+  'Be polite and brief. Never ask the customer for an OTP, card number or UPI PIN.';
+
+function checksFor({ customer, orderId, mustMention }) {
+  const firstName = customer.split(' ')[0];
+  return [
+    // The order-number check is the one v2 breaks.
+    mustMention
+      ? { type: 'contains', value: mustMention, caseSensitive: false }
+      : { type: 'contains', value: orderId, caseSensitive: false },
+    { type: 'contains', value: firstName, caseSensitive: false },
+    { type: 'not_contains', value: 'OTP', caseSensitive: true },
+    { type: 'max_length', value: 600 },
+  ];
+}
 
 async function main() {
   // Remove a previous demo account. Runs go first because they RESTRICT the
@@ -33,13 +120,13 @@ async function main() {
   await prisma.user.deleteMany({ where: { email: DEMO_EMAIL } });
 
   const user = await prisma.user.create({
-    data: { email: DEMO_EMAIL, name: 'Demo User', passwordHash: await hashPassword(DEMO_PASSWORD) },
+    data: { email: DEMO_EMAIL, name: DEMO_NAME, passwordHash: await hashPassword(DEMO_PASSWORD) },
   });
   const project = await prisma.project.create({
     data: {
       ownerId: user.id,
-      name: 'Support assistant',
-      description: 'Replies to customer support tickets for an online store.',
+      name: 'Monsoon Market — Customer Support',
+      description: 'Drafts first replies to customer support tickets for an online home and kitchen store.',
     },
   });
   const provider = await prisma.providerConfig.create({
@@ -66,15 +153,17 @@ async function main() {
         create: [
           {
             version: 1,
-            systemPrompt: 'You are a friendly support agent for an online store.',
+            systemPrompt: SYSTEM_PROMPT,
             template:
-              'Customer ticket: {{ticket}}\nOrder number: {{order_id}}\n\nWrite a short reply. Always mention the order number.',
+              'Customer: {{customer_name}} ({{city}})\nOrder number: {{order_id}}\nMessage: {{ticket}}\n\n' +
+              'Write a short reply. Greet the customer by first name and always quote the order number.',
             note: 'Initial version',
           },
           {
             version: 2,
-            systemPrompt: 'You are a friendly support agent for an online store.',
-            template: 'Customer ticket: {{ticket}}\n\nWrite a short reply.',
+            systemPrompt: SYSTEM_PROMPT,
+            template:
+              'Customer: {{customer_name}}\nMessage: {{ticket}}\n\nWrite a short reply. Greet the customer by first name.',
             note: 'Shorter prompt to cut token cost',
           },
         ],
@@ -87,16 +176,12 @@ async function main() {
     data: {
       projectId: project.id,
       name: 'core-tickets',
-      description: 'The most common ticket types.',
+      description: 'The ticket types the support team sees most often.',
       cases: {
-        create: tickets.map(([name, ticket, orderId]) => ({
-          name,
-          variables: { ticket, order_id: orderId },
-          assertions: [
-            { type: 'contains', value: orderId, caseSensitive: false },
-            { type: 'not_contains', value: 'password', caseSensitive: false },
-            { type: 'max_length', value: 600 },
-          ],
+        create: tickets.map((t) => ({
+          name: t.name,
+          variables: { customer_name: t.customer, city: t.city, order_id: t.orderId, ticket: t.ticket },
+          assertions: checksFor(t),
         })),
       },
     },
@@ -116,8 +201,8 @@ async function main() {
     useCache: true,
   });
 
-  console.log(`Seeded demo project "${project.name}" with 2 queued runs.`);
-  console.log(`Log in as ${DEMO_EMAIL} / ${DEMO_PASSWORD}`);
+  console.log(`Seeded "${project.name}" with ${tickets.length} test cases and 2 queued runs.`);
+  console.log(`Log in as ${DEMO_EMAIL} / ${DEMO_PASSWORD} (local development only).`);
   console.log('Start the worker (npm run worker) to execute the runs.');
 }
 

@@ -5,10 +5,10 @@
 import { expect, test } from '@playwright/test';
 
 test('a prompt change that breaks a test case is caught as a regression', async ({ page }) => {
-  const email = `e2e-${Date.now()}@example.com`;
+  const email = `priya.nair.${Date.now()}@theredarmy.test`;
 
   await page.goto('/#/signup');
-  await page.getByLabel('Name').fill('E2E User');
+  await page.getByLabel('Name').fill('Priya Nair');
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Password').fill('a long enough password');
   await page.getByRole('button', { name: 'Create account' }).click();
@@ -90,8 +90,8 @@ test('a prompt change that breaks a test case is caught as a regression', async 
 test('model output is rendered as text, never as HTML', async ({ page }) => {
   // Sign up and build a minimal project via the API (the UI journey is covered above).
   await page.goto('/#/signup');
-  await page.getByLabel('Name').fill('XSS check');
-  await page.getByLabel('Email').fill(`xss-${Date.now()}@example.com`);
+  await page.getByLabel('Name').fill('Arjun Menon');
+  await page.getByLabel('Email').fill(`arjun.menon.${Date.now()}@theredarmy.test`);
   await page.getByLabel('Password').fill('a long enough password');
   await page.getByRole('button', { name: 'Create account' }).click();
   await expect(page.getByRole('heading', { name: 'Projects' })).toBeVisible();

@@ -14,8 +14,8 @@ import { redis } from '../../src/redis.js';
 after(() => redis.quit());
 test('template: renders variables and lists them once each', () => {
   assert.equal(
-    renderTemplate('Hi {{ name }}, re: {{topic}}', { name: 'Asha', topic: 'refund' }),
-    'Hi Asha, re: refund',
+    renderTemplate('Hi {{ name }}, re: {{topic}}', { name: 'Priya', topic: 'refund' }),
+    'Hi Priya, re: refund',
   );
   assert.deepEqual(listVariables('{{a}} {{b}} {{a}}'), ['a', 'b']);
 });

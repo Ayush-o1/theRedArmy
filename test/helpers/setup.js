@@ -21,7 +21,18 @@ export async function closeConnections() {
   await redis.quit();
 }
 
+// Names for test accounts. Tests that need two separate tenants pass a name
+// explicitly (for example signedInClient({ name: 'Aditi Rao' })) so the
+// intent reads clearly; everyone else gets the next name from this list.
+const TEST_USERS = ['Aarav Mehta', 'Aditi Rao', 'Rohan Iyer', 'Priya Nair', 'Kabir Shah', 'Ananya Das'];
 let userCounter = 0;
+
+function emailFor(name) {
+  // A counter and timestamp keep emails unique across tests sharing a name.
+  // .test is reserved (RFC 2606), so these never reach a real mailbox.
+  const local = name.toLowerCase().replace(/[^a-z]+/g, '.');
+  return `${local}.${userCounter}.${Date.now()}@theredarmy.test`;
+}
 
 /**
  * Signs up a fresh user and returns a client that sends the session cookie
@@ -30,9 +41,10 @@ let userCounter = 0;
 export async function signedInClient(overrides = {}) {
   userCounter += 1;
   const agent = request.agent(app);
+  const name = overrides.name ?? TEST_USERS[(userCounter - 1) % TEST_USERS.length];
   const credentials = {
-    email: `user${userCounter}-${Date.now()}@example.com`,
-    name: `User ${userCounter}`,
+    name,
+    email: emailFor(name),
     password: 'correct horse battery',
     ...overrides,
   };
