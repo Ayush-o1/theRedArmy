@@ -72,7 +72,7 @@ Instead of a separate queue (Redis/BullMQ, RabbitMQ), the rows that hold results
 - The results and the queue can never disagree.
 - One less system to run.
 
-Cost: Postgres is not built for very high queue throughput. For a testing tool, where each job waits seconds for an LLM, this does not matter. See [DECISIONS.md](DECISIONS.md).
+Cost: Postgres is not built for very high queue throughput. For a testing tool, where each job waits seconds for an LLM, this does not matter. See [decisions.md](decisions.md).
 
 ### Indexes and why each exists
 

@@ -4,7 +4,7 @@
 
 | Level       | Tool                    | Runs against                | Purpose                                                                                            |
 | ----------- | ----------------------- | --------------------------- | -------------------------------------------------------------------------------------------------- |
-| Unit        | `node:test`             | Nothing external            | Pure logic: assertions, templates, backoff, comparison and gate rules, SSRF address checks, crypto |
+| Unit        | `node:test`             | No services (env vars only) | Pure logic: assertions, templates, backoff, comparison and gate rules, SSRF address checks, crypto |
 | Integration | `node:test` + supertest | Real Postgres and Redis     | HTTP API, authorization, transactions, and the queue under concurrency and failure                 |
 | End-to-end  | Playwright (Chromium)   | Real API + worker + browser | The main user journey, and XSS safety of rendered model output                                     |
 
@@ -14,32 +14,46 @@
 
 ## Running the tests
 
-Prerequisites: Postgres and Redis running (`docker compose up -d redis postgres`, or local installs), and a `.env.test` file:
+**Prerequisites:**
+
+- PostgreSQL and Redis running (`docker compose up -d redis postgres`, or local installs).
+- A separate test database.
+- A `.env.test` file. Start from the template:
 
 ```bash
-NODE_ENV=test
-DATABASE_URL=postgresql://<user>@localhost:5432/theredarmy_test?schema=public
-REDIS_URL=redis://localhost:6379/1
-ENCRYPTION_KEY=<openssl rand -base64 32>
-ALLOW_PRIVATE_PROVIDER_URLS=true
-LOG_LEVEL=silent
+cp .env.test.example .env.test
+sed -i.bak "s|^ENCRYPTION_KEY=.*|ENCRYPTION_KEY=$(openssl rand -base64 32)|" .env.test && rm .env.test.bak
+docker compose exec postgres createdb -U theredarmy theredarmy_test   # once; or createdb with a local Postgres
 ```
 
-`ALLOW_PRIVATE_PROVIDER_URLS=true` is needed because the provider tests start a mock server on `127.0.0.1`. The SSRF guard itself is unit-tested with private URLs blocked. Create the test database once (`createdb theredarmy_test`).
+The template points at the Docker Postgres on port 5433. Adjust `DATABASE_URL` if you use your own server. `ALLOW_PRIVATE_PROVIDER_URLS=true` is needed because the provider tests start a mock server on `127.0.0.1`; the SSRF guard itself is unit-tested with private URLs blocked.
+
+| Command                | What it runs                                                                                                                                       |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm test`             | `test:db` (applies migrations to the test database), then every file under `test/`: unit and integration, one file at a time                       |
+| `npm run test:unit`    | `test/unit/` only. Needs no database or Redis, but `.env.test` must exist: importing `src/config.js` validates `DATABASE_URL` and `ENCRYPTION_KEY` |
+| `npm run test:db`      | Only the test-database migrations                                                                                                                  |
+| `npm run test:e2e`     | Playwright. Starts its own API and worker on port 3100 against the test database. Run `npx playwright install chromium` once first                 |
+| `npm run lint`         | ESLint over the whole repository                                                                                                                   |
+| `npm run format:check` | Prettier, without rewriting files                                                                                                                  |
+
+**One file or one test:**
 
 ```bash
-npm test            # applies migrations to the test DB, then unit + integration tests
-npm run test:unit   # unit tests only
-npm run test:e2e    # browser tests; starts API + worker on port 3100 against the test DB
-npm run lint
-npm run format:check
+node --env-file=.env.test --test test/integration/engine.test.js
+node --env-file=.env.test --test --test-name-pattern="never process a case twice" test/integration/engine.test.js
+npx playwright test --headed      # watch the browser tests run
 ```
+
+**Reading the results.** `node:test` prints one line per test (`✔` or `✖`) and a summary ending in `ℹ pass N` and `ℹ fail N`. A failing test prints the assertion with expected and actual values. Playwright prints `N passed` or `N failed`, and on failure saves a trace under `test-results/` (`npx playwright show-trace <path>/trace.zip`).
 
 Test accounts use fictional Indian names (for example Aditi Rao and Rohan Iyer as two separate tenants in the isolation tests) and email addresses on the reserved `.test` domain, so no test can ever email a real address.
 
-Integration tests truncate all tables (and flush Redis db 1) before each test. **Never point `.env.test` at a database you care about.** Tests run one file at a time (`--test-concurrency=1`) because they share the database.
+Integration tests truncate all tables (and flush Redis database 1) before each test. **Never point `.env.test` at a database you care about.** Tests run one file at a time (`--test-concurrency=1`) because they share the database.
 
-In CI (GitHub Actions), Postgres and Redis run as service containers and all of the above runs on every push.
+**Regression testing of the product itself:** the first end-to-end test is the full regression scenario the product exists for. It saves a prompt version that breaks a check, runs it against the previous version, and expects the gate to fail with exactly one regression.
+
+In CI (GitHub Actions), Postgres and Redis run as service containers, and lint, formatting and all three test levels run on every push to `main` and on every pull request. See [ci-cd.md](ci-cd.md).
 
 ## What is covered
 

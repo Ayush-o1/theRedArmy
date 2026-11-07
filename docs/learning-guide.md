@@ -68,7 +68,7 @@ There are two programs and two databases:
 - **Asynchronous processing**: `POST /runs` returns **202 Accepted**. The work happens later.
 - **Layering**: `routes` (HTTP and validation) → `services` (data logic) → `engine` (execution, no HTTP knowledge).
 
-Read: [ARCHITECTURE.md](ARCHITECTURE.md) (diagram at the top), then [`src/app.js`](../src/app.js) top to bottom.
+Read: [architecture.md](architecture.md) (diagram at the top), then [`src/app.js`](../src/app.js) top to bottom.
 
 **Why not just call the model inside the HTTP request?** A suite of 100 cases at 2 seconds each is over 3 minutes. HTTP requests would time out, a crash would lose all progress, and you could not use several machines. Background jobs fix all three.
 
@@ -156,7 +156,7 @@ Follow-up you might get: _"So can the provider be called twice for one job?"_ Ye
 
 ### 4.4 "Why not just keep a database transaction open while calling the model?"
 
-A transaction holds a database connection and its locks for the whole call, which could be 30 seconds. With 50 concurrent jobs, that is 50 idle connections, and long transactions block database maintenance (vacuum). A lease is just a timestamp. And `config.js` refuses to start if the provider timeout is not at least 5 s shorter than the lease, so a healthy call can never outlive its lease.
+A transaction holds a database connection and its locks for the whole call, which could be 30 seconds. With 50 concurrent jobs, that is 50 idle connections, and long transactions block database maintenance (vacuum). A lease is just a timestamp. And `config.js` refuses to start unless the provider timeout is more than 5 s shorter than the lease, so a healthy call can never outlive its lease.
 
 ### 4.5 "Two workers finish the last two jobs at the same moment. Who marks the run complete?"
 
@@ -202,7 +202,7 @@ No. `UPDATE prompts SET latest_version = latest_version + 1 RETURNING …` insid
 
 ## Part 5: The database
 
-Read [DATABASE.md](DATABASE.md) and [`prisma/schema.prisma`](../prisma/schema.prisma).
+Read [database.md](database.md) and [`prisma/schema.prisma`](../prisma/schema.prisma).
 
 Things to be able to explain:
 
@@ -217,7 +217,7 @@ Things to be able to explain:
 
 ## Part 6: Security
 
-For each item, know _the attack_ and _the defence_. Details: [ARCHITECTURE.md § Security](ARCHITECTURE.md#security).
+For each item, know _the attack_ and _the defence_. Details: [architecture.md § Security](architecture.md#security).
 
 | Attack                                          | Defence                                                                                               | File                             |
 | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------- | -------------------------------- |
@@ -241,7 +241,7 @@ For each item, know _the attack_ and _the defence_. Details: [ARCHITECTURE.md §
 
 ## Part 7: Decisions you must be able to defend
 
-Full list: [DECISIONS.md](DECISIONS.md). The top five:
+Full list: [decisions.md](decisions.md). The top five:
 
 1. **Postgres as the queue instead of Redis/BullMQ.** The dual-write problem: saving a run in Postgres and pushing jobs to Redis are two writes, and a crash between them corrupts state. One transaction avoids it. Trade-off: lower max throughput and polling, irrelevant when each job waits on an LLM.
 2. **Sessions instead of JWT.** Instant revocation (delete the row), and an httpOnly cookie protects against XSS token theft. A JWT denylist would be a session table anyway.
@@ -269,7 +269,7 @@ When asked "why X?", use this pattern: **what problem X solves → what the alte
 | **supertest**        | HTTP assertions against an Express app                                   | Integration tests without opening a port                                                            |
 | **Playwright**       | Browser automation                                                       | End-to-end tests in real Chromium                                                                   |
 | **Docker / Compose** | Containers                                                               | Redis and Postgres for development; full stack in one command                                       |
-| **GitHub Actions**   | CI                                                                       | Lint, format, all tests with real services on every push                                            |
+| **GitHub Actions**   | CI                                                                       | Lint, format, all tests with real services on every push to `main` and every pull request           |
 
 ---
 

@@ -17,7 +17,7 @@ Teams that build on large language models change their prompts often: to fix a b
 - Engineers found that classic unit testing breaks down ("every test is a flaky test"), and at least one team stopped automated LLM testing because of its cost ([Parnin et al., _Building Your Own Product Copilot_, 2023](https://arxiv.org/abs/2312.14231)).
 - Users of LLM regression tools struggled to spot which output differences were regressions and to track how prompt edits affected outputs ([_RETAIN_, arXiv 2409.03928, 2024](https://arxiv.org/abs/2409.03928)).
 
-Good tools already exist for this (Promptfoo, Langfuse experiments, Braintrust, LangSmith). theRedArmy does not claim to fill an empty market gap. It is a focused, self-hosted implementation of the core workflow, built to get the backend parts right: background jobs, retries, rate limits, caching, idempotency and crash recovery. [docs/RESEARCH.md](docs/RESEARCH.md) explains how the problem was chosen.
+Good tools already exist for this (Promptfoo, Langfuse experiments, Braintrust, LangSmith). theRedArmy does not claim to fill an empty market gap. It is a focused, self-hosted implementation of the core workflow, built to get the backend parts right: background jobs, retries, rate limits, caching, idempotency and crash recovery. [docs/research.md](docs/research.md) explains how the problem was chosen.
 
 ## How it works
 
@@ -38,7 +38,7 @@ flowchart LR
   W -->|chat completion| LLM[LLM provider or simulator]
 ```
 
-Full walkthrough: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Full walkthrough: [docs/architecture.md](docs/architecture.md).
 
 ## Features
 
@@ -87,7 +87,7 @@ All three come from the running application with the seeded demo data (see [Demo
 | Tests           | `node:test`, supertest, Playwright | Built-in runner for unit and integration tests; Playwright for real browser journeys.                                 |
 | Delivery        | Docker, Docker Compose, GH Actions | One image for API and worker; CI runs every test against real Postgres and Redis.                                     |
 
-Every choice and its trade-offs: [docs/DECISIONS.md](docs/DECISIONS.md).
+Every choice and its trade-offs: [docs/decisions.md](docs/decisions.md).
 
 ## Quick start
 
@@ -187,7 +187,7 @@ npm run lint
 npm run format:check
 ```
 
-`npm test` needs a separate test database (for example `theredarmy_test`) configured in `.env.test`. **The tests truncate every table**, so never point it at data you care about. Setup details and what each test covers: [docs/TESTING.md](docs/TESTING.md).
+`npm test` needs a separate test database (for example `theredarmy_test`) configured in `.env.test`. **The tests truncate every table**, so never point it at data you care about. Setup details and what each test covers: [docs/testing.md](docs/testing.md).
 
 ## Using it from CI
 
@@ -205,7 +205,7 @@ curl -X POST http://localhost:3000/api/v1/runs \
 curl http://localhost:3000/api/v1/runs/<run id> -H "Authorization: Bearer $THEREDARMY_KEY"
 ```
 
-Using the commit SHA as the `Idempotency-Key` means a retried CI step returns the original run instead of starting a second one. Full reference: [docs/API.md](docs/API.md).
+Using the commit SHA as the `Idempotency-Key` means a retried CI step returns the original run instead of starting a second one. Full reference: [docs/api.md](docs/api.md).
 
 ## Project structure
 
@@ -236,13 +236,13 @@ docs/                       documentation and screenshots
 
 ## Documentation
 
-- [Research and problem selection](docs/RESEARCH.md)
-- [Architecture](docs/ARCHITECTURE.md): components, request flows, the job queue, security
-- [Database design](docs/DATABASE.md)
-- [API reference](docs/API.md)
-- [Design decisions and trade-offs](docs/DECISIONS.md)
-- [Testing](docs/TESTING.md)
-- [Learning guide](docs/LEARNING_GUIDE.md): understand the project from scratch and prepare to discuss it
+- [Research and problem selection](docs/research.md)
+- [Architecture](docs/architecture.md): components, request flows, the job queue, security
+- [Database design](docs/database.md)
+- [API reference](docs/api.md)
+- [Design decisions and trade-offs](docs/decisions.md)
+- [Testing](docs/testing.md)
+- [Learning guide](docs/learning-guide.md): understand the project from scratch and prepare to discuss it
 
 ## Known limitations
 
@@ -251,11 +251,11 @@ These are real gaps, not planned features presented as done:
 - **Checks are deterministic only.** There is no LLM-as-judge or semantic-similarity check, so free-form answers can only be tested with text, regex, JSON and length rules.
 - **One owner per project.** No teams, roles or sharing.
 - **Workers poll** Postgres every second when idle. Fine at this scale; `LISTEN/NOTIFY` would remove the delay.
-- **SSRF guard has a DNS-rebinding gap.** The provider hostname is resolved for the check and again by `fetch`. See [DECISIONS.md](docs/DECISIONS.md).
+- **SSRF guard has a DNS-rebinding gap.** The provider hostname is resolved for the check and again by `fetch`. See [decisions.md](docs/decisions.md).
 - **Cost figures are estimates**, from token counts and the prices you enter.
 - **Only OpenAI-compatible APIs** are supported for real models; there is no native Anthropic or Gemini adapter.
 - **No password reset or email verification.**
-- **Not production-hardened.** Basic security controls are in place and tested (see [ARCHITECTURE.md § Security](docs/ARCHITECTURE.md#security)), but there has been no external audit, load test or deployment behind a real proxy. Behind a reverse proxy you must configure Express `trust proxy` so rate limits see client IPs.
+- **Not production-hardened.** Basic security controls are in place and tested (see [architecture.md § Security](docs/architecture.md#security)), but there has been no external audit, load test or deployment behind a real proxy. Behind a reverse proxy you must configure Express `trust proxy` so rate limits see client IPs.
 
 ## License
 

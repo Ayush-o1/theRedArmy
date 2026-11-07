@@ -3,7 +3,7 @@
 //
 // Polling every second is simple and good enough for a testing tool, where a
 // one-second delay before a run starts is not noticeable. Postgres
-// LISTEN/NOTIFY could remove the delay; see docs/DECISIONS.md.
+// LISTEN/NOTIFY could remove the delay; see docs/decisions.md.
 import os from 'node:os';
 import crypto from 'node:crypto';
 import { logger } from '../lib/logger.js';
