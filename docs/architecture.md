@@ -151,7 +151,7 @@ stateDiagram-v2
 | A late worker cannot overwrite a newer result      | Every completion checks `locked_by = me AND status = 'RUNNING'`                 | same test: the stale write returns `false`               |
 | A job that keeps crashing workers eventually stops | Attempts are counted at claim time; the reaper marks `ERROR` at `max_attempts`  | _a job whose worker keeps dying gives up…_               |
 | Exactly one worker finalizes a run                 | Conditional `UPDATE … WHERE status IN (…) AND NOT EXISTS (unfinished jobs)`     | _finalization is idempotent under concurrent calls_      |
-| A provider call cannot outlive its lease           | Startup check: lease must exceed the provider timeout by 5 s or more            | `config.js`                                              |
+| A provider call cannot outlive its lease           | Startup check: lease must exceed the provider timeout by more than 5 s          | `config.js`                                              |
 
 **Delivery semantics:** this is _at-least-once_ execution of the provider call. If a worker gets a response but dies before saving it, the job runs again. For a testing tool that is acceptable: the cost is one extra API call, with no external side effect. The fencing check means a result is _recorded_ at most once.
 
@@ -199,4 +199,4 @@ All external input is validated with zod at the route boundary: body, query and 
 
 - `Dockerfile` builds one image (non-root user, production dependencies only). The command chooses API or worker.
 - `docker compose --profile full up` runs a one-shot `migrate` container, then the API and worker, which wait for it to finish.
-- GitHub Actions runs lint, formatting, unit, integration and browser tests against real Postgres and Redis on every push.
+- GitHub Actions runs lint, formatting, unit, integration and browser tests against real Postgres and Redis on every push to `main` and every pull request.

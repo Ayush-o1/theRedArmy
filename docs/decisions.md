@@ -29,7 +29,7 @@ Each entry gives the decision, the alternatives considered, and why. These are t
 **Decision:** A claim sets `lease_expires_at`. A reaper (every 15 s on each worker) returns expired jobs to `PENDING`. Completions require `locked_by = me AND status = 'RUNNING'`.
 **Alternatives:** Hold a database transaction open for the whole job (the lock disappears automatically if the worker dies). Or use heartbeats.
 **Why:** Holding a transaction open across a 30-second HTTP call ties up a database connection per job and causes long-running-transaction problems. A lease is a timestamp, which costs nothing while held. Fencing covers the case a lease cannot: the original worker was only _slow_, not dead.
-**Trade-off:** If a job really takes longer than its lease, it can run twice. That is why `config.js` refuses to start unless the lease exceeds the provider timeout by at least 5 seconds. Heartbeats (extending the lease while working) would allow arbitrarily long jobs; not needed here.
+**Trade-off:** If a job really takes longer than its lease, it can run twice. That is why `config.js` refuses to start unless the lease exceeds the provider timeout by more than 5 seconds. Heartbeats (extending the lease while working) would allow arbitrarily long jobs; not needed here.
 
 ### 4. Retries: full-jitter exponential backoff, honour `Retry-After`, retry only transient errors
 
