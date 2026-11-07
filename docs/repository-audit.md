@@ -128,3 +128,31 @@ Application code, database schema and migrations, API routes and payloads, envir
 4. Supporting files: `LICENSE`, `SECURITY.md`, `CONTRIBUTING.md`, `.env.test.example`, `.env.example` completeness.
 5. GitHub metadata: topics.
 6. Verification (tests, lint, format, Compose, links, fresh-clone setup), then a pull request against `main`.
+
+## 10. Outcome
+
+All P1 and P2 findings above were addressed on this branch; P3 (social preview) remains a recommendation.
+
+GitHub settings changed through the API, and confirmed by reading them back:
+
+- 12 topics set (section 6).
+- Private vulnerability reporting enabled, so the route in `SECURITY.md` works. The owner's other public repository already uses it.
+
+Verification on the final branch commit:
+
+| Check                                                                | Result                                                                                                                   |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Fresh clone, following `docs/setup.md` step by step                  | Install, Docker services, `.env`, migrations, seed, API health, demo runs (v1 8/8, v2 1/8) all as documented             |
+| Test setup from `.env.test.example`, test database created in Docker | Works as documented                                                                                                      |
+| `npm test`                                                           | 73/73 pass                                                                                                               |
+| `npm run test:unit`                                                  | 29/29 pass                                                                                                               |
+| `npm run test:e2e`                                                   | 2/2 pass                                                                                                                 |
+| `npm run lint`, `npm run format:check`                               | Pass                                                                                                                     |
+| `docker compose --profile full up --build`                           | Image built, migrations applied, API healthy, worker running                                                             |
+| CI gate example script in `docs/ci-cd.md`                            | Run against a local server: gate failed with 7 regressions, exit code 1; a retry with the same key returned the same run |
+| Internal links and anchors (all Markdown files)                      | 94 checked, 0 broken                                                                                                     |
+| External links                                                       | All return 200 (the OpenAI base URL appears only as a payload example)                                                   |
+| Secrets scan of the diff                                             | None found                                                                                                               |
+| Code changed                                                         | One comment path in `src/engine/worker.js` (pointing at the renamed decisions doc)                                       |
+
+Test counts are as of this commit and will change as tests are added; they are recorded here, not in the README.
