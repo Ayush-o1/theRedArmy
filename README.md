@@ -20,7 +20,7 @@ Mature tools already exist (Promptfoo, Langfuse, Braintrust, LangSmith), and the
 
 ## What it does
 
-- **Immutable prompt versions.** Saving a prompt creates v1, v2, …; every run records exactly which text it tested.
+- **Immutable prompt versions.** Saving a prompt creates v1, v2, every run records exactly which text it tested.
 - **Test suites with deterministic checks:** `contains`, `not_contains`, `equals`, `regex`, `is_json`, `json_field_equals`, length and latency.
 - **Background execution.** A run becomes one job per test case. Workers claim jobs from PostgreSQL with `FOR UPDATE SKIP LOCKED`, so any number of workers share the load without running a job twice.
 - **Failure handling.** Transient errors (429, 5xx, timeouts) are retried with exponential backoff and jitter, honouring `Retry-After`. Permanent errors are not retried.
