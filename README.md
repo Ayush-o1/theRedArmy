@@ -1,6 +1,6 @@
 # theRedArmy
 
-Self-hosted regression testing for LLM prompts. Write test cases once, run every new prompt version against them in background workers, and see exactly which cases broke. A CI pipeline can call the API and fail the build when a prompt change causes a regression.
+Self-hosted regression testing for LLM prompts. Write test cases once, run every new prompt version against them in background workers and see exactly which cases broke. A CI pipeline can call the API and fail the build when a prompt change causes a regression.
 
 [![CI](https://github.com/Ayush-o1/theRedArmy/actions/workflows/ci.yml/badge.svg)](https://github.com/Ayush-o1/theRedArmy/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
