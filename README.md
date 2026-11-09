@@ -130,7 +130,7 @@ GitHub Actions runs lint, formatting, all three test levels and a dependency aud
 
 ## Using it as a CI gate
 
-Create an API key under **Settings & CI**, then from your pipeline:
+Create an API key under **Settings & CI**, then from your pipeline;
 
 ```bash
 curl -X POST "$THEREDARMY_URL/api/v1/runs" \
